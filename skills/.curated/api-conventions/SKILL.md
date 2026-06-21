@@ -1,15 +1,15 @@
 ---
 name: api-conventions
-description: Apply YourOrg's REST API design standards when designing, reviewing, or implementing HTTP endpoints — naming, versioning, error shapes, pagination, and auth.
+description: Apply pramodyadav027's REST API design standards when designing, reviewing, or implementing HTTP endpoints — naming, versioning, error shapes, pagination, and auth.
 metadata:
   owner: platform-team
   category: standard
 ---
 
-# YourOrg API Conventions
+# pramodyadav027 API Conventions
 
 Use this skill whenever you are designing a new endpoint, reviewing an API PR, or
-generating client/server code that exposes or consumes HTTP APIs at YourOrg.
+generating client/server code that exposes or consumes HTTP APIs at pramodyadav027.
 
 ## When to Use
 

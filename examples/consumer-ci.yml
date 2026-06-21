@@ -1,6 +1,6 @@
 # Drop this into a CONSUMER repo at .github/workflows/skills.yml
-# It keeps that repo's Claude Code agent on the latest YourOrg standards.
-name: Sync YourOrg skills
+# It keeps that repo's Claude Code agent on the latest pramodyadav027 standards.
+name: Sync pramodyadav027 skills
 
 on:
   workflow_dispatch: {}
@@ -14,4 +14,4 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
-      - run: npx -y @yourorg/skills sync
+      - run: npx -y @pramodyadav027/skills sync

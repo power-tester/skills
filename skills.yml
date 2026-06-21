@@ -1,0 +1,23 @@
+# skills.yml — manifest of vendored external skills
+#
+# Each entry under `vendored:` is pulled by scripts/vendor-sync.py and
+# deposited into skills/.vendored/<dest>/. Do NOT hand-edit the vendored files;
+# update the pin here and re-run the script instead.
+#
+# Fields:
+#   dest     — folder name under skills/.vendored/
+#   repo     — GitHub "owner/repo"
+#   path     — path within the repo whose SKILL.md to vendor (use "." for root)
+#   commit   — pinned commit SHA; set to REPLACE_WITH_COMMIT_SHA to resolve on next sync
+#   enabled  — set to false to skip without removing the entry
+#   audited  — date the vendored content was last reviewed for safety (YYYY-MM-DD or false)
+#   reviewer — GitHub handle of who audited it
+
+vendored:
+  - dest: web-design-guidelines
+    repo: vercel-labs/web-interface-guidelines
+    path: .
+    commit: REPLACE_WITH_COMMIT_SHA
+    enabled: true
+    audited: false
+    reviewer: ""

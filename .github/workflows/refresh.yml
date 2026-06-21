@@ -4,6 +4,9 @@ name: Refresh vendored skills
 # and opens a PR. Nothing is auto-merged — a human reviews third-party changes.
 
 on:
+  push:
+    branches:
+      - main
   schedule:
     - cron: "0 6 * * 1"   # every Monday 06:00 UTC
   workflow_dispatch: {}     # allow manual runs
@@ -37,6 +40,6 @@ jobs:
             Automated refresh of `skills/.vendored/` to the latest upstream commits.
 
             **Review before merging** — this contains third-party changes.
-            Confirm `SOURCES.md` pins and re-run any required audit.
+            Confirm `skills.yml` pins and re-run any required audit.
           labels: skills, automated
           delete-branch: true
