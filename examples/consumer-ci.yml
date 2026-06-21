@@ -1,0 +1,17 @@
+# Drop this into a CONSUMER repo at .github/workflows/skills.yml
+# It keeps that repo's Claude Code agent on the latest YourOrg standards.
+name: Sync YourOrg skills
+
+on:
+  workflow_dispatch: {}
+  schedule:
+    - cron: "0 7 * * 1"   # weekly, Monday 07:00 UTC
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: npx -y @yourorg/skills sync

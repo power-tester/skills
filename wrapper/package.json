@@ -1,0 +1,19 @@
+{
+  "name": "@pramodyadav027/skills",
+  "version": "1.0.0",
+  "description": "Install and keep company skills up to date in Claude Code.",
+  "skillsConfig": {
+    "repo": "yourorg/skills",
+    "agent": "claude-code"
+  },
+  "bin": {
+    "skills": "bin/skills-sync.js"
+  },
+  "files": [
+    "bin"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "license": "MIT"
+}
