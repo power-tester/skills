@@ -18,7 +18,8 @@ Target agent: **Claude Code**. Install scope: **global** (applies across all of 
 ├── skills.yml                          # the manifest: vendored list, pins, provenance
 ├── scripts/vendor-sync.py              # re-pull vendored skills from upstream
 ├── .github/workflows/refresh.yml       # weekly: bump vendored skills, open a PR
-└── wrapper/                            # the @pramodyadav027/skills consumer CLI
+├── bin/skills-sync.js                  # the @pramodyadav027/skills consumer CLI
+└── package.json                        # npm package definition
 ```
 
 ## For developers: install & stay current
