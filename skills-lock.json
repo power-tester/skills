@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "skills": {
+    "api-conventions": {
+      "source": "power-tester/skills",
+      "sourceType": "github",
+      "skillPath": "skills/.curated/api-conventions/SKILL.md",
+      "computedHash": "2dc1fbee61edce07c9b79a2c2814338b584194191b5a39a84e04df793fc91302"
+    },
+    "web-design-guidelines": {
+      "source": "power-tester/skills",
+      "sourceType": "github",
+      "skillPath": "skills/.vendored/web-design-guidelines/SKILL.md",
+      "computedHash": "a6a44d5498f7e8f68289902f3dedfc6f38ae0cee1e96527c80724cf27f727c2a"
+    }
+  }
+}
