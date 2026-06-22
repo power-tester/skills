@@ -1,79 +1,127 @@
-# pramodyadav027/skills
+# power-tester/skills
 
-The central manifest of agent skills for pramodyadav027. It holds two kinds of skill, both
-delivered to developers' agents via [`npx @pramodyadav027/skills-pm`](https://www.npmjs.com/package/@pramodyadav027/skills-pm):
-
-- **`skills/.curated/`** — skills we author for our own software standards (API conventions,
-  PR workflow, testing, etc.).
-- **`skills/.vendored/`** — curated **copies** of the best public skills, pinned to a reviewed
-  upstream commit. The list, pins, and provenance live in [`skills.yml`](./skills.yml).
+The central skills manifest for this organisation. [`skills.yml`](./skills.yml) is the single
+source of truth — it lists every skill and the upstream GitHub repo that owns it.
+Consumers install skills directly from those upstream repos; nothing is committed here except the manifest.
 
 Target agent: **Claude Code**. Install scope: **global** (applies across all of a user's projects).
 
 ```
 .
-├── skills/
-│   ├── .curated/<skill>/SKILL.md      # our standards (edit freely)
-│   └── .vendored/<skill>/SKILL.md     # external copies (do NOT hand-edit)
-├── skills.yml                          # the manifest: vendored list, pins, provenance
-├── scripts/vendor-sync.py              # re-pull vendored skills from upstream
-├── .github/workflows/refresh.yml       # weekly: bump vendored skills, open a PR
-├── bin/skills-sync.js                  # the @pramodyadav027/skills-pm consumer CLI
-└── package.json                        # npm package definition
+├── skills.yml          # source of truth — list of skills and their upstream repos
+├── bin/skills-sync.js  # the @pramodyadav027/skills-pm CLI (consumer). (maintainer) calls bin/skills-sync.js directly using npm.
+├── package.json        # npm package definition
+└── examples/
+    └── consumer-ci.yml # example GitHub Actions workflow for consumer repos
 ```
 
-## For developers: install & stay current
+> `skills/` is **git-ignored** — it is a generated directory produced by `npx @pramodyadav027/skills-pm fetch` and used for local review only.
 
-One command installs everything and keeps it updated (Claude Code, global):
+---
+
+## For consumers
+
+Consumers are developers or projects that want to install these skills into Claude Code.
+No checkout of this repo is required.
+
+### Install / sync skills
 
 ```bash
 npx @pramodyadav027/skills-pm sync
 ```
 
-Pin to a released tag instead of the latest `main`:
+This reads `skills.yml` from GitHub, then installs each skill directly from its declared
+upstream repo. Skills with a `select` list install only those specific skills; entries
+without `select` install everything from that repo.
+
+Pin to a specific branch or tag instead of `main`:
 
 ```bash
-npx @pramodyadav027/skills-pm sync --tag v2
+npx @pramodyadav027/skills-pm sync --ref v2
 ```
 
-Under the hood this runs:
+### Other consumer commands
 
 ```bash
-npx skills add pramodyadav027/skills -g --all -a claude-code -y
-npx skills update -g -y
+npx @pramodyadav027/skills-pm list     # list installed skills
+npx @pramodyadav027/skills-pm remove   # remove all skills installed from this manifest
 ```
 
-Other commands: `npx @pramodyadav027/skills-pm list`, `npx @pramodyadav027/skills-pm remove`.
+### Keep skills up to date automatically
 
-### Keep it automatic
+Add the following to a consumer repo at `.github/workflows/skills.yml`
+(or copy from [`examples/consumer-ci.yml`](./examples/consumer-ci.yml)):
 
-- **In a project repo (CI-enforced):** add a job that runs `npx @pramodyadav027/skills-pm sync` so the
-  agent picks up the latest standards on every CI run / devcontainer create. See
-  `examples/consumer-ci.yml`.
-- **For an individual:** schedule `npx @pramodyadav027/skills-pm sync` to run weekly (cron, or your
-  agent's scheduled-task feature).
+```yaml
+on:
+  schedule:
+    - cron: "0 7 * * 1"   # weekly, Monday 07:00 UTC
+  workflow_dispatch: {}
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: npx -y @pramodyadav027/skills-pm sync
+```
+
+---
 
 ## For maintainers
 
-### Add or change a pramodyadav027 standard
-Edit/create a folder under `skills/.curated/<name>/SKILL.md` with `name` + `description`
-frontmatter. Open a PR. Tag a release (`vN`) when you want consumers on tags to pick it up.
+Maintainers are people who manage this repo — adding, removing, or updating entries in `skills.yml`.
 
-### Add an external skill
-1. Find it: `npx skills find <query>` or browse https://skills.sh.
-2. Add an entry under `vendored:` in `skills.yml` (dest, repo, path, commit, audited, reviewer).
-3. Run `python3 scripts/vendor-sync.py` to vendor it in (needs `pip install ruamel.yaml`).
-4. Review the vendored `SKILL.md` (and any scripts) for security, then PR it.
+### Add a skill
 
-### Refresh externals to latest
-`python3 scripts/vendor-sync.py --latest` rewrites the pins in `skills.yml` to upstream HEAD.
-The weekly Action does this automatically and opens a PR — **review before merging**, since it
-contains third-party changes.
+Edit `skills.yml` and add an entry:
 
-### Hide work-in-progress
-Add `metadata.internal: true` to a `SKILL.md`; it won't ship until you remove it.
+```yaml
+- repo: some-org/some-skills-repo   # GitHub repo that contains the SKILL.md
+  path: .                           # path within the repo where skill subdirs live
+  ref: main                         # branch, tag, or commit SHA
+  enabled: true
+  select:                           # optional: omit to install all skills from the repo
+    - skill-name-a
+    - skill-name-b
+```
 
-## Releasing
+Open a PR. When merged, consumers running `sync` will pick it up on their next run.
 
-Tag the repo (`git tag v2 && git push --tags`) to cut a stable version. Consumers using
-`--tag` / `PRAMODYADAV027_SKILLS_PM_TAG` stay on that version; consumers without a tag track `main`.
+### Remove or disable a skill
+
+- **Disable temporarily:** set `enabled: false` on the entry.
+- **Remove permanently:** delete the entry from `skills.yml`.
+
+### Preview skill files locally
+
+Pull the SKILL.md files to a local `skills/` directory for review before adding an entry:
+
+```bash
+# from inside this repo
+npm run fetch
+```
+
+This reads the local `skills.yml`, downloads each selected skill's `SKILL.md` from its
+upstream repo, and writes them to `skills/<name>/SKILL.md`. The `skills/` directory is
+git-ignored — it is for inspection only.
+
+### Publish a new version
+
+After merging changes to `skills.yml`, bump the version and publish to npm so consumers
+get the update:
+
+```bash
+npm version patch   # or minor / major
+npm publish
+```
+
+Tag the repo if you want consumers to be able to pin to a stable release:
+
+```bash
+git tag v2 && git push --tags
+```
+
+Consumers can then pin with `npx @pramodyadav027/skills-pm sync --ref v2`.
