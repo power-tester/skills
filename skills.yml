@@ -26,4 +26,4 @@ skills:
     enabled: true
     select:
       - writing-guidelines
-      - vercel-react-best-practices
+      - react-best-practices
