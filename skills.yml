@@ -1,28 +1,24 @@
-# skills.yml — manifest of vendored external skills
+# skills.yml — source of truth for all skills in this collection.
 #
-# Each entry under `vendored:` is pulled by scripts/vendor-sync.py and
-# deposited into skills/.vendored/<dest>/. Do NOT hand-edit the vendored files;
-# update the pin here and re-run the script instead.
+# Each entry points to the upstream repo that owns the skill.
+# The skills/ directory is generated — do not hand-edit files there.
+#
+# Consumer: npx @pramodyadav027/skills-pm sync
+#   Reads this file from GitHub and installs each skill from its upstream repo.
+#
+# Maintainer: npx @pramodyadav027/skills-pm fetch
+#   Reads this file locally and pulls SKILL.md files into skills/ for review.
 #
 # Fields:
-#   dest     — folder name under skills/.vendored/
-#   repo     — GitHub "owner/repo"
-#   path     — path within the repo whose SKILL.md to vendor (use "." for root)
-#   commit   — pinned commit SHA; set to REPLACE_WITH_COMMIT_SHA to resolve on next sync
+#   name     — identifier used for the local skills/<name>/ folder when fetched
+#   repo     — GitHub "owner/repo" that owns the SKILL.md
+#   path     — path within the repo to the directory containing SKILL.md ("." for root)
+#   ref      — branch, tag, or commit SHA to pin to
 #   enabled  — set to false to skip without removing the entry
-#   audited  — date the vendored content was last reviewed for safety (YYYY-MM-DD or false)
-#   reviewer — GitHub handle of who audited it
 
-vendored:
-  # TODO: verify the correct upstream repo and path before enabling.
-  # The SKILL.md currently in skills/.vendored/web-design-guidelines/ was hand-authored
-  # to fetch content from vercel-labs/web-interface-guidelines at runtime — it is NOT
-  # directly vendored from that repo. Update repo/path to the actual upstream source
-  # (e.g. a vercel-labs skills collection repo) and then set enabled: true.
-  - dest: web-design-guidelines
+skills:
+  - name: web-design-guidelines
     repo: vercel-labs/web-interface-guidelines
     path: .
-    commit: REPLACE_WITH_COMMIT_SHA
+    ref: main
     enabled: true
-    audited: false
-    reviewer: ""

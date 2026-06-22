@@ -1,19 +1,24 @@
 #!/usr/bin/env node
 /**
- * Thin wrapper over `npx skills` so users don't memorize flags.
- * Configure via the "skillsConfig" key in package.json.
+ * Consumer and maintainer CLI for @pramodyadav027/skills-pm.
  *
- *   npx @pramodyadav027/skills-pm sync             install + update skills (Claude Code, global)
- *   npx @pramodyadav027/skills-pm sync --tag v2    pin to a released tag instead of the default branch
- *   npx @pramodyadav027/skills-pm install          restore skills from skills-lock.json
- *   npx @pramodyadav027/skills-pm list             list installed skills
- *   npx @pramodyadav027/skills-pm remove           remove skills
+ * Consumer commands (run from any project):
+ *   npx @pramodyadav027/skills-pm sync [--ref <branch>]
+ *     Reads skills.yml from the source repo on GitHub and installs each
+ *     skill from its declared upstream repo.
+ *
+ *   npx @pramodyadav027/skills-pm list
+ *   npx @pramodyadav027/skills-pm remove
+ *
+ * Maintainer commands (run inside this repo):
+ *   npx @pramodyadav027/skills-pm fetch
+ *     Reads skills.yml locally and downloads each SKILL.md into skills/
+ *     for local review or compliance checks. skills/ is git-ignored.
  */
+
 const { skillsConfig, name: PKG_NAME } = require("../package.json");
 const SOURCE_REPO = skillsConfig?.repo;
 const AGENT = skillsConfig?.agent ?? "claude-code";
-// Derive env var name from package name: @pramodyadav027/skills-pm -> PRAMODYADAV027_SKILLS_PM_TAG
-const TAG_ENV_VAR = PKG_NAME.replace(/^@/, "").replace(/[^a-z0-9]+/gi, "_").toUpperCase() + "_TAG";
 
 if (!SOURCE_REPO) {
   console.error(`Error: set skillsConfig.repo in ${PKG_NAME}'s package.json`);
@@ -21,39 +26,119 @@ if (!SOURCE_REPO) {
 }
 
 const { spawnSync } = require("node:child_process");
+const https = require("node:https");
+const fs = require("node:fs");
+const path = require("node:path");
+const { parse: parseYaml } = require("yaml");
+
+// Fetch a URL, following redirects.
+function fetchUrl(url) {
+  return new Promise((resolve, reject) => {
+    https
+      .get(url, { headers: { "User-Agent": PKG_NAME } }, (res) => {
+        if (res.statusCode >= 301 && res.statusCode <= 303 && res.headers.location) {
+          return fetchUrl(res.headers.location).then(resolve, reject);
+        }
+        let data = "";
+        res.on("data", (chunk) => (data += chunk));
+        res.on("end", () => {
+          if (res.statusCode === 200) {
+            resolve(data);
+          } else {
+            reject(new Error(`HTTP ${res.statusCode} fetching ${url}`));
+          }
+        });
+      })
+      .on("error", reject);
+  });
+}
+
+// Load and parse skills.yml. Pass { remote: true } to fetch from GitHub,
+// or omit to read from the local file (maintainer use).
+async function loadManifest({ remote = false, ref = "main" } = {}) {
+  let content;
+  if (remote) {
+    const url = `https://raw.githubusercontent.com/${SOURCE_REPO}/${ref}/skills.yml`;
+    console.log(`Fetching manifest from github.com/${SOURCE_REPO} (${ref})...`);
+    content = await fetchUrl(url);
+  } else {
+    content = fs.readFileSync(path.join(__dirname, "..", "skills.yml"), "utf8");
+  }
+  const manifest = parseYaml(content);
+  return (manifest.skills || []).filter((s) => s.enabled !== false);
+}
 
 function run(args) {
-  // Use --package skills to force npx to resolve the `skills` npm package,
-  // not the `skills-pm` binary from this wrapper.
-  const npxArgs = ["--package", "skills", ...args];
   console.log(`\n$ npx ${args.join(" ")}\n`);
-  const r = spawnSync("npx", npxArgs, { stdio: "inherit", shell: process.platform === "win32" });
+  const r = spawnSync("npx", ["--package", "skills", ...args], {
+    stdio: "inherit",
+    shell: process.platform === "win32",
+  });
   if (r.status !== 0) process.exit(r.status ?? 1);
 }
 
-function sourceArg(tag) {
-  // A tag pins to an immutable release; no tag => default branch (latest).
-  return tag ? `https://github.com/${SOURCE_REPO}/tree/${tag}` : SOURCE_REPO;
+// Consumer: read manifest from GitHub, install each skill from its upstream repo.
+async function cmdSync(ref) {
+  const skills = await loadManifest({ remote: true, ref });
+
+  if (!skills.length) {
+    console.log("No enabled skills found in manifest.");
+    return;
+  }
+
+  // Dedupe by repo — if multiple entries share a repo, one `skills add` covers all.
+  const repos = [...new Set(skills.map((s) => s.repo))];
+  console.log(`\nInstalling ${skills.length} skill(s) from ${repos.length} repo(s)...\n`);
+
+  for (const repo of repos) {
+    run(["skills", "add", repo, "-g", "--all", "-a", AGENT, "-y"]);
+  }
+
+  run(["skills", "update", "-g", "-y"]);
+  console.log(`\n✓ Skills are installed and up to date.`);
 }
 
-function main() {
+// Maintainer: download SKILL.md files into skills/ for local review.
+async function cmdFetch() {
+  const skills = await loadManifest({ remote: false });
+
+  if (!skills.length) {
+    console.log("No enabled skills found in manifest.");
+    return;
+  }
+
+  const outDir = path.join(__dirname, "..", "skills");
+
+  for (const skill of skills) {
+    const ref = skill.ref ?? "main";
+    const filePath =
+      skill.path && skill.path !== "." ? `${skill.path}/SKILL.md` : "SKILL.md";
+    const url = `https://raw.githubusercontent.com/${skill.repo}/${ref}/${filePath}`;
+
+    process.stdout.write(`  ${skill.name}  (${skill.repo}@${ref})  ... `);
+    const content = await fetchUrl(url);
+
+    const dest = path.join(outDir, skill.name);
+    fs.mkdirSync(dest, { recursive: true });
+    fs.writeFileSync(path.join(dest, "SKILL.md"), content);
+    console.log("✓");
+  }
+
+  console.log(`\n✓ Skill files written to skills/.`);
+}
+
+async function main() {
   const argv = process.argv.slice(2);
   const cmd = argv[0] || "sync";
-  const tagIdx = argv.indexOf("--tag");
-  const tag = tagIdx !== -1 ? argv[tagIdx + 1] : process.env[TAG_ENV_VAR];
+  const refIdx = argv.indexOf("--ref");
+  const ref = refIdx !== -1 ? argv[refIdx + 1] : "main";
 
   switch (cmd) {
-    case "sync": {
-      const src = sourceArg(tag);
-      // Install (or add new) skills globally for Claude Code, then update existing ones.
-      run(["skills", "add", src, "-g", "--all", "-a", AGENT, "-y"]);
-      run(["skills", "update", "-g", "-y"]);
-      console.log(`\n✓ ${PKG_NAME} skills are installed and up to date.`);
+    case "sync":
+      await cmdSync(ref);
       break;
-    }
-    case "install":
-      // Restore skills from skills-lock.json (like `npm ci` for skills).
-      run(["skills", "experimental_install"]);
+    case "fetch":
+      await cmdFetch();
       break;
     case "list":
       run(["skills", "list", "-g", "-a", AGENT]);
@@ -61,16 +146,23 @@ function main() {
     case "remove":
       run(["skills", "remove", "-g", "-y"]);
       break;
-    default:
+    case "help":
+    case "--help":
       console.log(
         `Usage:\n` +
-          `  npx ${PKG_NAME} sync [--tag <tag>]   install + update (default)\n` +
-          `  npx ${PKG_NAME} install               restore from skills-lock.json\n` +
-          `  npx ${PKG_NAME} list                  list installed skills\n` +
-          `  npx ${PKG_NAME} remove                remove ${PKG_NAME} skills`
+          `  npx ${PKG_NAME} sync [--ref <branch>]   install skills from upstream repos\n` +
+          `  npx ${PKG_NAME} fetch                    pull SKILL.md files locally for review\n` +
+          `  npx ${PKG_NAME} list                     list installed skills\n` +
+          `  npx ${PKG_NAME} remove                   remove ${PKG_NAME} skills`
       );
-      process.exit(cmd === "help" || cmd === "--help" ? 0 : 1);
+      break;
+    default:
+      console.error(`Unknown command: ${cmd}. Run with --help for usage.`);
+      process.exit(1);
   }
 }
 
-main();
+main().catch((err) => {
+  console.error(`\nError: ${err.message}`);
+  process.exit(1);
+});
