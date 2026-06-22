@@ -80,27 +80,33 @@ function run(args, { allowFailure = false } = {}) {
 
 // Consumer: read manifest from GitHub, install each skill from its upstream repo.
 async function cmdSync(ref) {
-  const skills = await loadManifest({ remote: true, ref });
+  const entries = await loadManifest({ remote: true, ref });
 
-  if (!skills.length) {
+  if (!entries.length) {
     console.log("No enabled skills found in manifest.");
     return;
   }
 
-  // Dedupe by repo — if multiple entries share a repo, one `skills add` covers all.
-  const repos = [...new Set(skills.map((s) => s.repo))];
-  console.log(`\nInstalling ${skills.length} skill(s) from ${repos.length} repo(s)...\n`);
+  console.log(`\nInstalling from ${entries.length} source(s)...\n`);
 
   const failed = [];
-  for (const repo of repos) {
-    const status = run(["skills", "add", repo, "-g", "--all", "-a", AGENT, "-y"], { allowFailure: true });
-    if (status !== 0) failed.push(repo);
+  for (const entry of entries) {
+    // With `select`, install named skills only; without it, install all.
+    const skillArgs =
+      entry.select && entry.select.length > 0
+        ? entry.select
+        : ["--all"];
+    const status = run(
+      ["skills", "add", entry.repo, ...skillArgs, "-g", "-a", AGENT, "-y"],
+      { allowFailure: true }
+    );
+    if (status !== 0) failed.push(entry.repo);
   }
 
   run(["skills", "update", "-g", "-y"]);
 
   if (failed.length) {
-    console.log(`\n⚠  ${failed.length} repo(s) had no valid skills and were skipped:`);
+    console.log(`\n⚠  ${failed.length} source(s) had no valid skills and were skipped:`);
     failed.forEach((r) => console.log(`   - ${r}`));
   }
   console.log(`\n✓ Skills are installed and up to date.`);

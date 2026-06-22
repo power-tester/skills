@@ -1,8 +1,5 @@
 # skills.yml — source of truth for all skills in this collection.
 #
-# Each entry points to the upstream repo that owns the skill.
-# The skills/ directory is generated — do not hand-edit files there.
-#
 # Consumer: npx @pramodyadav027/skills-pm sync
 #   Reads this file from GitHub and installs each skill from its upstream repo.
 #
@@ -10,22 +7,23 @@
 #   Reads this file locally and pulls SKILL.md files into skills/ for review.
 #
 # Fields:
-#   name     — identifier used for the local skills/<name>/ folder when fetched
-#   repo     — GitHub "owner/repo" that owns the SKILL.md
-#   path     — path within the repo to the directory containing SKILL.md ("." for root)
+#   repo     — GitHub "owner/repo" that owns the skills
+#   path     — base path within the repo where skill subdirectories live ("." for root)
 #   ref      — branch, tag, or commit SHA to pin to
 #   enabled  — set to false to skip without removing the entry
+#   select   — optional list of skill names to install; omit to install all from the repo
 
 skills:
-  - name: web-design-guidelines
-    repo: vercel-labs/web-interface-guidelines
+  # vercel-labs/web-interface-guidelines has no SKILL.md — kept as a entry to test that process should not fail if a repo has no skills.
+  - repo: vercel-labs/web-interface-guidelines
     path: .
     ref: main
-    enabled: true
-  
-  - name: agent-skills
-    repo: vercel-labs/agent-skills
-    path: .
-    ref: main
-    enabled: true
+    enabled: false
 
+  - repo: vercel-labs/agent-skills
+    path: skills
+    ref: main
+    enabled: true
+    select:
+      - writing-guidelines
+      - vercel-react-best-practices
