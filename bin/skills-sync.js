@@ -68,13 +68,14 @@ async function loadManifest({ remote = false, ref = "main" } = {}) {
   return (manifest.skills || []).filter((s) => s.enabled !== false);
 }
 
-function run(args) {
+function run(args, { allowFailure = false } = {}) {
   console.log(`\n$ npx ${args.join(" ")}\n`);
   const r = spawnSync("npx", ["--package", "skills", ...args], {
     stdio: "inherit",
     shell: process.platform === "win32",
   });
-  if (r.status !== 0) process.exit(r.status ?? 1);
+  if (r.status !== 0 && !allowFailure) process.exit(r.status ?? 1);
+  return r.status ?? 0;
 }
 
 // Consumer: read manifest from GitHub, install each skill from its upstream repo.
@@ -90,11 +91,18 @@ async function cmdSync(ref) {
   const repos = [...new Set(skills.map((s) => s.repo))];
   console.log(`\nInstalling ${skills.length} skill(s) from ${repos.length} repo(s)...\n`);
 
+  const failed = [];
   for (const repo of repos) {
-    run(["skills", "add", repo, "-g", "--all", "-a", AGENT, "-y"]);
+    const status = run(["skills", "add", repo, "-g", "--all", "-a", AGENT, "-y"], { allowFailure: true });
+    if (status !== 0) failed.push(repo);
   }
 
   run(["skills", "update", "-g", "-y"]);
+
+  if (failed.length) {
+    console.log(`\n⚠  ${failed.length} repo(s) had no valid skills and were skipped:`);
+    failed.forEach((r) => console.log(`   - ${r}`));
+  }
   console.log(`\n✓ Skills are installed and up to date.`);
 }
 
