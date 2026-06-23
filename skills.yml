@@ -7,7 +7,8 @@
 #   Reads this file locally and pulls SKILL.md files into skills/ for review.
 #
 # Fields:
-#   repo     — GitHub "owner/repo" that owns the skills
+#   repo     — "owner/repo" path on the git host
+#   host     — git host (github.com | gitlab.com | bitbucket.org | self-hosted); default: github.com
 #   path     — base path within the repo where skill subdirectories live ("." for root)
 #   ref      — branch, tag, or commit SHA to pin to
 #   enabled  — set to false to skip without removing the entry
